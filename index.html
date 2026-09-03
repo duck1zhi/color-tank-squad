@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="彩色坦克小队：守护能量基地，穿越九关并组合十八种随机技能。">
+  <title>彩色坦克小队</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23080b1d'/%3E%3Cpath d='M12 25h34v24H12zM19 15h20v13H19zM39 20h18v7H39z' fill='%2334d399'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#game-shell">跳到游戏区域</a>
+  <main id="game-shell" class="game-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="彩色坦克小队首页">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 19h25v17H9zM14 13h14v8H14zM28 16h13v5H28zM7 36h31v5H7z"/><circle cx="14" cy="38" r="4"/><circle cx="32" cy="38" r="4"/></svg>
+        <span>彩色坦克小队</span>
+      </a>
+      <div class="top-actions">
+        <button id="help-button" class="icon-button" type="button" aria-label="查看操作说明" title="操作说明">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20Zm0-5v.01M9.1 9a3 3 0 1 1 4.1 2.8c-.8.4-1.2.9-1.2 1.7"/></svg>
+        </button>
+        <button id="sound-button" class="icon-button" type="button" aria-label="关闭声音" title="声音开关">
+          <svg class="sound-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5Zm4.5 3.5a5 5 0 0 1 0 7M18 6a8 8 0 0 1 0 12"/></svg>
+          <svg class="sound-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5Zm4 5 5 5m0-5-5 5"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="stage-frame" aria-label="游戏舞台">
+      <div id="hud" class="hud" hidden>
+        <div class="hud-item"><span>装甲</span><strong id="hud-hp">3/3</strong></div>
+        <div class="hud-item"><span>基地</span><strong id="hud-base">6/6</strong></div>
+        <div class="hud-item hud-stage"><span id="hud-level">翡翠草原</span><strong id="hud-wave">第 1/2 波</strong></div>
+        <div class="hud-item"><span>场上 / 剩余</span><strong id="hud-enemies">0 / 18</strong></div>
+        <div class="hud-item"><span>得分</span><strong id="hud-score">000000</strong></div>
+        <div class="hud-item combo"><span>连击</span><strong id="hud-combo">×1</strong></div>
+      </div>
+      <canvas id="game" width="960" height="640" aria-label="彩色坦克小队游戏画面"></canvas>
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+      <section id="menu" class="overlay menu-overlay">
+        <div class="menu-art" aria-hidden="true">
+          <div class="pixel-sun"></div><div class="hero-tank"><i></i><b></b><span></span></div>
+          <div class="terrain-blocks"><i></i><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="menu-copy">
+          <p class="eyebrow">守护基地 · 随机成长 · 九关远征</p>
+          <h1>彩色坦克<br><em>小队</em></h1>
+          <p class="lead">穿过九片彩色战场，组合十八种技能，守住最后一格能量。</p>
+          <button id="start-button" class="primary-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7V5Z"/></svg>
+            开始新游戏
+          </button>
+          <button id="continue-button" class="secondary-button continue-button" type="button" hidden>继续游戏</button>
+          <div class="menu-meta">
+            <span>WASD / 方向键移动</span><span>空格射击</span><span>P 暂停</span>
+          </div>
+          <div class="records"><span>最高分 <b id="best-score">0</b></span><span>最快通关 <b id="best-time">--:--</b></span></div>
+        </div>
+      </section>
+
+      <section id="upgrade-panel" class="overlay panel-overlay" hidden>
+        <div class="panel-card wide-card">
+          <p id="upgrade-kicker" class="eyebrow">关卡完成</p><h2 id="upgrade-title">选择一项战术升级</h2>
+          <p id="upgrade-subtitle" class="panel-subtitle">升级会保留到本次九关战役结束。</p>
+          <div id="upgrade-options" class="upgrade-grid"></div>
+        </div>
+      </section>
+
+      <section id="pause-panel" class="overlay panel-overlay" hidden>
+        <div class="panel-card compact-card">
+          <p class="eyebrow">战斗暂停</p><h2>稍作休整</h2>
+          <button id="resume-button" class="primary-button" type="button">继续战斗</button>
+          <button id="restart-button" class="secondary-button" type="button">重新开始本局</button>
+          <button id="menu-button" class="text-button" type="button">返回首页</button>
+        </div>
+      </section>
+
+      <section id="result-panel" class="overlay panel-overlay" hidden>
+        <div class="panel-card result-card">
+          <p id="result-kicker" class="eyebrow">任务完成</p>
+          <div id="result-badge" class="result-badge">S</div>
+          <h2 id="result-title">基地守住了！</h2>
+          <div class="result-stats">
+            <div><span>最终得分</span><strong id="result-score">0</strong></div>
+            <div><span>通关时间</span><strong id="result-time">00:00</strong></div>
+            <div><span>最高连击</span><strong id="result-combo">×1</strong></div>
+            <div><span>基地能量</span><strong id="result-base">0/6</strong></div>
+          </div>
+          <button id="again-button" class="primary-button" type="button">再来一局</button>
+          <button id="result-menu-button" class="text-button" type="button">返回首页</button>
+        </div>
+      </section>
+    </section>
+    <div id="upgrade-strip" class="upgrade-strip" aria-label="已获得升级" hidden></div>
+  </main>
+
+  <dialog id="help-dialog" class="help-dialog">
+    <form method="dialog">
+      <button class="dialog-close" aria-label="关闭操作说明" value="cancel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+      </button>
+      <p class="eyebrow">作战手册</p><h2>一分钟上手</h2>
+      <div class="help-grid">
+        <div><span class="keyset"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><b>移动坦克</b><p>方向键也可以。冰面会保留短暂惯性。</p></div>
+        <div><span class="keyset"><kbd>SPACE</kbd></span><b>发射炮弹</b><p>摧毁砖墙，寻找安全射击路线。</p></div>
+        <div><span class="keyset"><kbd>P</kbd><kbd>R</kbd></span><b>暂停 / 重开</b><p>保护底部的彩色能量基地。</p></div>
+      </div>
+      <label class="toggle-row"><input id="shake-toggle" type="checkbox"><span>开启屏幕震动</span></label>
+      <button class="primary-button" value="default">知道了</button>
+    </form>
+  </dialog>
+  <script src="game.js"></script>
+</body>
+</html>
