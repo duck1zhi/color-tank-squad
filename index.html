@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="description" content="彩色坦克小队：守护能量基地，穿越九关并组合十八种随机技能。">
   <title>彩色坦克小队</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23080b1d'/%3E%3Cpath d='M12 25h34v24H12zM19 15h20v13H19zM39 20h18v7H39z' fill='%2334d399'/%3E%3C/svg%3E">
@@ -38,6 +38,18 @@
       </div>
       <canvas id="game" width="960" height="640" aria-label="彩色坦克小队游戏画面"></canvas>
       <div id="toast" class="toast" role="status" aria-live="polite"></div>
+      <div id="mobile-controls" class="mobile-controls" aria-label="手机触控操作" hidden>
+        <div id="move-stick" class="move-stick" role="group" aria-label="移动摇杆">
+          <span class="stick-arrows" aria-hidden="true">◆</span>
+          <span id="move-knob" class="move-knob" aria-hidden="true"></span>
+        </div>
+        <div class="mobile-action-group">
+          <button id="mobile-pause" class="mobile-pause" type="button" aria-label="暂停游戏">Ⅱ</button>
+          <button id="fire-button" class="fire-button" type="button" aria-label="持续发射炮弹">
+            <span aria-hidden="true">●</span><b>开火</b>
+          </button>
+        </div>
+      </div>
 
       <section id="menu" class="overlay menu-overlay">
         <div class="menu-art" aria-hidden="true">
@@ -54,7 +66,7 @@
           </button>
           <button id="continue-button" class="secondary-button continue-button" type="button" hidden>继续游戏</button>
           <div class="menu-meta">
-            <span>WASD / 方向键移动</span><span>空格射击</span><span>P 暂停</span>
+            <span>WASD / 方向键移动</span><span>空格射击</span><span>P 暂停</span><span class="mobile-meta">手机横屏触控</span>
           </div>
           <div class="records"><span>最高分 <b id="best-score">0</b></span><span>最快通关 <b id="best-time">--:--</b></span></div>
         </div>
@@ -107,10 +119,16 @@
         <div><span class="keyset"><kbd>SPACE</kbd></span><b>发射炮弹</b><p>摧毁砖墙，寻找安全射击路线。</p></div>
         <div><span class="keyset"><kbd>P</kbd><kbd>R</kbd></span><b>暂停 / 重开</b><p>保护底部的彩色能量基地。</p></div>
       </div>
+      <p class="touch-help">手机请横屏：左侧摇杆移动，右侧按钮持续开火，右上小按钮暂停。</p>
       <label class="toggle-row"><input id="shake-toggle" type="checkbox"><span>开启屏幕震动</span></label>
       <button class="primary-button" value="default">知道了</button>
     </form>
   </dialog>
+  <div class="rotate-hint" role="status" aria-label="请旋转手机">
+    <div class="rotate-phone" aria-hidden="true">↻</div>
+    <strong>请横屏作战</strong>
+    <span>旋转手机后即可使用摇杆和开火按钮</span>
+  </div>
   <script src="game.js"></script>
 </body>
 </html>

@@ -176,8 +176,11 @@
   let game = null;
   let lastTime = performance.now();
   let keys = new Set();
+  const touchCapable = navigator.maxTouchPoints > 0 || matchMedia("(pointer: coarse)").matches;
+  let mobileDirection = null, mobileFire = false, stickPointer = null, firePointer = null;
   let audioCtx = null;
   let toastTimer = 0;
+  document.documentElement.classList.toggle("touch-capable",touchCapable);
 
   function newGame() {
     return {
@@ -326,7 +329,7 @@
   function updatePlayer(dt) {
     const p=game.player;
     p.fireCooldown=Math.max(0,p.fireCooldown-dt); p.invulnerable=Math.max(0,p.invulnerable-dt);p.armorBreak=Math.max(0,p.armorBreak-dt);
-    let dir=null;
+    let dir=mobileDirection;
     if(keys.has("arrowup")||keys.has("w"))dir="up";
     else if(keys.has("arrowdown")||keys.has("s"))dir="down";
     else if(keys.has("arrowleft")||keys.has("a"))dir="left";
@@ -338,7 +341,7 @@
     }else if(onIce && (Math.abs(p.iceVX)+Math.abs(p.iceVY)>8)){
       moveTank(p,p.iceVX*dt,p.iceVY*dt,true);p.iceVX*=Math.pow(.18,dt);p.iceVY*=Math.pow(.18,dt);
     }else{p.iceVX=0;p.iceVY=0}
-    if(keys.has(" ")) firePlayer();
+    if(keys.has(" ")||mobileFire) firePlayer();
   }
 
   function updateEnemy(e,dt) {
@@ -584,7 +587,7 @@
   }
 
   function showUpgradeChoices(){
-    game.state="upgrade";keys.clear();els.upgrades.hidden=false;
+    game.state="upgrade";keys.clear();setMobileControlsVisible(false);els.upgrades.hidden=false;
     byId("upgrade-kicker").textContent=`第 ${game.levelIndex+1} 关完成`;
     byId("upgrade-title").textContent="选择一项战术升级";
     byId("upgrade-subtitle").textContent=[2,5].includes(game.levelIndex)?"选择技能后还将获得本章Boss核心。":"升级会保留到本次九关战役结束。";
@@ -611,7 +614,7 @@
 
   function finish(won,reason=""){
     if(!game||["victory","defeat"].includes(game.state))return;
-    game.state=won?"victory":"defeat";keys.clear();els.result.hidden=false;
+    game.state=won?"victory":"defeat";keys.clear();setMobileControlsVisible(false);els.result.hidden=false;
     const time=Math.floor(game.elapsed),baseRatio=Math.max(0,game.base.hp/game.base.maxHp);
     const rank=won?(baseRatio>=.8&&game.maxCombo>=5?"S":baseRatio>=.5?"A":"B"):"C";
     byId("result-kicker").textContent=won?"任务完成":reason;
@@ -629,17 +632,18 @@
   function togglePause(force){
     if(!game||!["battle","paused"].includes(game.state))return;
     const pause=force??game.state==="battle";game.state=pause?"paused":"battle";els.pause.hidden=!pause;keys.clear();
+    setMobileControlsVisible(!pause);
     if(pause)byId("resume-button").focus();
   }
 
   function goMenu(){
-    game=null;keys.clear();els.menu.hidden=false;els.hud.hidden=true;els.upgradeStrip.hidden=true;
+    game=null;keys.clear();setMobileControlsVisible(false);els.menu.hidden=false;els.hud.hidden=true;els.upgradeStrip.hidden=true;
     els.pause.hidden=els.result.hidden=els.upgrades.hidden=true;drawMenuBackdrop();updateRecords();updateContinueButton();
   }
 
   function showGameUI(){
     els.menu.hidden=true;els.result.hidden=true;els.pause.hidden=true;els.upgrades.hidden=true;
-    els.hud.hidden=false;els.upgradeStrip.hidden=false;renderUpgradeStrip();updateHud();
+    els.hud.hidden=false;els.upgradeStrip.hidden=false;setMobileControlsVisible(true);renderUpgradeStrip();updateHud();
   }
 
   function renderUpgradeStrip(){
@@ -806,6 +810,51 @@
   function shade(hex,amount){const n=parseInt(hex.slice(1),16),r=clamp((n>>16)+amount,0,255),g=clamp(((n>>8)&255)+amount,0,255),b=clamp((n&255)+amount,0,255);return`rgb(${r},${g},${b})`}
   function formatTime(seconds){return`${String(Math.floor(seconds/60)).padStart(2,"0")}:${String(seconds%60).padStart(2,"0")}`}
 
+  function resetMobileInput(){
+    mobileDirection=null;mobileFire=false;stickPointer=null;firePointer=null;
+    const knob=byId("move-knob"),fire=byId("fire-button");
+    if(knob)knob.style.transform="translate(-50%,-50%)";
+    fire?.classList.remove("active");
+  }
+
+  function setMobileControlsVisible(visible){
+    const controls=byId("mobile-controls");
+    controls.hidden=!(touchCapable&&visible&&game?.state==="battle");
+    if(controls.hidden)resetMobileInput();
+  }
+
+  function updateMobileStick(event){
+    if(event.pointerId!==stickPointer||game?.state!=="battle")return;
+    const stick=byId("move-stick"),knob=byId("move-knob"),rect=stick.getBoundingClientRect();
+    const dx=event.clientX-(rect.left+rect.width/2),dy=event.clientY-(rect.top+rect.height/2);
+    const distanceFromCenter=Math.hypot(dx,dy),limit=rect.width*.28,scale=distanceFromCenter>limit?limit/distanceFromCenter:1;
+    knob.style.transform=`translate(calc(-50% + ${dx*scale}px),calc(-50% + ${dy*scale}px))`;
+    if(distanceFromCenter<rect.width*.1){mobileDirection=null;return}
+    mobileDirection=Math.abs(dx)>Math.abs(dy)?(dx<0?"left":"right"):(dy<0?"up":"down");
+  }
+
+  const moveStick=byId("move-stick"),fireButton=byId("fire-button");
+  moveStick.addEventListener("pointerdown",event=>{
+    if(game?.state!=="battle"||stickPointer!==null)return;
+    event.preventDefault();initAudio();stickPointer=event.pointerId;
+    try{moveStick.setPointerCapture(event.pointerId)}catch{/* pointer capture unavailable */}
+    updateMobileStick(event);
+  });
+  moveStick.addEventListener("pointermove",event=>{event.preventDefault();updateMobileStick(event)});
+  const releaseStick=event=>{if(event.pointerId!==stickPointer)return;stickPointer=null;mobileDirection=null;byId("move-knob").style.transform="translate(-50%,-50%)"};
+  moveStick.addEventListener("pointerup",releaseStick);moveStick.addEventListener("pointercancel",releaseStick);moveStick.addEventListener("lostpointercapture",releaseStick);
+
+  fireButton.addEventListener("pointerdown",event=>{
+    if(game?.state!=="battle"||firePointer!==null)return;
+    event.preventDefault();initAudio();firePointer=event.pointerId;mobileFire=true;fireButton.classList.add("active");
+    try{fireButton.setPointerCapture(event.pointerId)}catch{/* pointer capture unavailable */}
+    firePlayer();
+  });
+  const releaseFire=event=>{if(event.pointerId!==firePointer)return;firePointer=null;mobileFire=false;fireButton.classList.remove("active")};
+  fireButton.addEventListener("pointerup",releaseFire);fireButton.addEventListener("pointercancel",releaseFire);fireButton.addEventListener("lostpointercapture",releaseFire);
+  byId("mobile-pause").addEventListener("click",event=>{event.preventDefault();togglePause()});
+  byId("mobile-controls").addEventListener("contextmenu",event=>event.preventDefault());
+
   document.addEventListener("keydown",(event)=>{
     const key=event.key.toLowerCase();
     if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(key))event.preventDefault();
@@ -814,8 +863,9 @@
     keys.add(key);
   });
   document.addEventListener("keyup",event=>keys.delete(event.key.toLowerCase()));
-  window.addEventListener("blur",()=>{keys.clear();if(game?.state==="battle")togglePause(true)});
-  document.addEventListener("visibilitychange",()=>{if(document.hidden&&game?.state==="battle")togglePause(true)});
+  window.addEventListener("blur",()=>{keys.clear();resetMobileInput();if(game?.state==="battle")togglePause(true)});
+  window.addEventListener("orientationchange",resetMobileInput);
+  document.addEventListener("visibilitychange",()=>{if(document.hidden){resetMobileInput();if(game?.state==="battle")togglePause(true)}});
 
   byId("start-button").addEventListener("click",requestNewGame);
   byId("continue-button").addEventListener("click",continueGame);
